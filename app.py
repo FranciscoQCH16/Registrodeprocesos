@@ -45,48 +45,75 @@ with pestañas[4]:
     st.header("Control de limpieza y desinfección Restaurante UFPSO")
     fecha_control = st.date_input("Fecha del control", value=date.today(), key="fecha_control_ufpso", help="Fecha")
 
-    def render_categoria(nombre_categoria, key_prefix):
-        st.subheader(nombre_categoria)
+    categorias = [
+        ("Baños", "banos"),
+        ("Almacen Fruver", "fruver"),
+        ("Almacen Abarrotes", "abarrotes"),
+        ("Cavas de almacenamientos/nevera", "cavas"),
+        ("Cocina caliente", "caliente"),
+        ("Panaderia/pasteleria", "panaderia"),
+        ("Linea de servicio", "linea"),
+        ("Comedor", "comedor"),
+        ("Acopio de residuos", "acopio")
+    ]
+    dfs_categorias = {}
+    for nombre, key in categorias:
+        st.subheader(nombre)
         columnas = [
             "Área", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Observaciones"
         ]
-        num_filas = st.number_input(f"Cantidad de filas para {nombre_categoria}", min_value=1, max_value=20, value=4, key=f"num_filas_{key_prefix}")
+        num_filas = st.number_input(f"Cantidad de filas para {nombre}", min_value=1, max_value=20, value=4, key=f"num_filas_{key}")
         cols_header = st.columns(len(columnas))
         for idx, col in enumerate(columnas):
             cols_header[idx].markdown(f"**{col}**")
         data = []
         for i in range(num_filas):
             cols = st.columns(len(columnas))
-            area_val = cols[0].text_input("Área", key=f"{key_prefix}_area_{i}", label_visibility="collapsed", placeholder="Ej: Área")
+            area_val = cols[0].text_input("Área", key=f"{key}_area_{i}", label_visibility="collapsed", placeholder="Ej: Área")
             fila = [area_val]
             for j in range(1, 7):
                 val = cols[j].selectbox(
                     columnas[j],
                     [f"Seleccione {columnas[j]}", "R", "NR"],
-                    key=f"{key_prefix}_{i}_{j}",
+                    key=f"{key}_{i}_{j}",
                     label_visibility="collapsed",
                     index=0,
                     help=f"Seleccione R o NR para {columnas[j]}"
                 )
                 val = val if val in ["R", "NR"] else ""
                 fila.append(val)
-            observ = cols[7].text_input("Observaciones", key=f"{key_prefix}_obs_{i}", label_visibility="collapsed", placeholder="Observaciones")
+            observ = cols[7].text_input("Observaciones", key=f"{key}_obs_{i}", label_visibility="collapsed", placeholder="Observaciones")
             fila.append(observ)
             data.append(fila)
         df = pd.DataFrame(data, columns=columnas)
-        responsable = st.text_input(f"Responsable del registro {nombre_categoria}", key=f"responsable_{key_prefix}")
-        if st.button(f"Generar y subir reporte de limpieza {nombre_categoria} a Dropbox", key=f"btn_{key_prefix}"):
-            archivo = generar_excel(
-                f"CONTROL DE LIMPIEZA Y DESINFECCION RESTAURANTE UFPSO - {nombre_categoria}",
-                fecha_control,
-                df,
-                responsable,
-                "",
-                "",
-                nombre_reporte=f"Control_Limpieza_{key_prefix}_UFPSO"
-            )
-            url = subir_a_dropbox(archivo)
-            st.success(f"Reporte generado y subido. Acceso: {url}")
+        dfs_categorias[nombre] = df
+
+    responsable_general = st.text_input("Responsable general del reporte", key="responsable_general_restaurante")
+    if st.button("Generar y subir reporte de limpieza Restaurante a Dropbox", key="btn_reporte_restaurante"):
+        # Construir una super tabla con títulos de categoría como filas separadoras
+        super_tabla = []
+        for nombre, key in categorias:
+            # Fila de título de categoría
+            super_tabla.append([f"{nombre}"] + ["" for _ in range(7)])
+            # Encabezados de la tabla
+            super_tabla.append(list(dfs_categorias[nombre].columns))
+            # Filas de la tabla
+            for fila in dfs_categorias[nombre].values:
+                super_tabla.append(list(fila))
+            # Fila vacía para separar categorías
+            super_tabla.append(["" for _ in range(8)])
+        df_super = pd.DataFrame(super_tabla)
+        archivo = generar_excel(
+            "CONTROL DE LIMPIEZA Y DESINFECCION RESTAURANTE UFPSO",
+            fecha_control,
+            df_super,
+            responsable_general,
+            "",
+            "",
+            nombre_reporte="Control_Limpieza_Restaurante_UFPSO"
+        )
+        url = subir_a_dropbox(archivo)
+        st.success(f"Reporte generado y subido. Acceso: {url}")
 
     categorias = [
         ("Baños", "banos"),
@@ -99,8 +126,7 @@ with pestañas[4]:
         ("Comedor", "comedor"),
         ("Acopio de residuos", "acopio")
     ]
-    for nombre, key in categorias:
-        render_categoria(nombre, key)
+    # (render_categoria eliminado, ya no se llama aquí)
 with pestañas[3]:
     st.header("Registro y control de limpieza y desinfección de tanques de almacenamiento de agua")
     columnas4 = [
