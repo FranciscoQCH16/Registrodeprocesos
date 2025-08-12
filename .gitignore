@@ -1,0 +1,3 @@
+# Ignorar archivos de secretos y tokens
+.secrets/
+.env
