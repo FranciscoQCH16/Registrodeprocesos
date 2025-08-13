@@ -74,9 +74,9 @@ with pestañas[4]:
         if not archivos_semana:
             st.warning("No se encontraron reportes diarios para ese rango de fechas.")
         else:
-            # Agrupar por día de la semana
-            dias_map = {0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves", 4: "Viernes", 5: "Sábado", 6: "Domingo"}
-            tablas_por_dia = {}
+            # Agrupar por fecha real (YYYY-MM-DD)
+            tablas_por_fecha = {}
+            fechas_ordenadas = []
             for nombre_archivo, fecha_archivo in sorted(archivos_semana, key=lambda x: x[1]):
                 ruta = DROPBOX_FOLDER + nombre_archivo
                 _, res = dbx.files_download(ruta)
@@ -92,29 +92,24 @@ with pestañas[4]:
                             break
                     tabla = data[idx:]
                     df = pd.DataFrame(tabla[1:], columns=tabla[0])
-                    # Detectar el día de la semana
-                    dia_dt = date.fromisoformat(fecha_archivo)
-                    dia_semana = dias_map[dia_dt.weekday()]
-                    if dia_semana not in tablas_por_dia:
-                        tablas_por_dia[dia_semana] = []
-                    tablas_por_dia[dia_semana].append(df)
-            # Unir por día y guardar en Excel lado a lado
+                    if fecha_archivo not in tablas_por_fecha:
+                        tablas_por_fecha[fecha_archivo] = []
+                        fechas_ordenadas.append(fecha_archivo)
+                    tablas_por_fecha[fecha_archivo].append(df)
+            # Unir por fecha y guardar en Excel lado a lado
             with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx", prefix="Control_Limpieza_Restaurante_UFPSO_Semanal_") as tmp:
                 with pd.ExcelWriter(tmp.name, engine="openpyxl") as writer:
                     col_offset = 0
-                    for dia in ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]:
-                        if dia in tablas_por_dia:
-                            df_dia = pd.concat(tablas_por_dia[dia], ignore_index=True)
-                            df_dia.to_excel(writer, sheet_name="Semana", startrow=0, startcol=col_offset, index=False)
-                            # Escribir el nombre del día arriba de la tabla
-                            ws = writer.sheets["Semana"]
-                            ws.cell(row=1, column=col_offset+1, value=dia)
-                            col_offset += len(df_dia.columns) + 2  # Separación entre tablas
+                    for fecha in fechas_ordenadas:
+                        df_fecha = pd.concat(tablas_por_fecha[fecha], ignore_index=True)
+                        df_fecha.to_excel(writer, sheet_name="Semana", startrow=0, startcol=col_offset, index=False)
+                        ws = writer.sheets["Semana"]
+                        ws.cell(row=1, column=col_offset+1, value=fecha)
+                        col_offset += len(df_fecha.columns) + 2
                 nombre_archivo_final = f"Control_Limpieza_Restaurante_UFPSO_Semanal_{fecha_inicio}_a_{fecha_fin}.xlsx"
                 ruta_destino = DROPBOX_FOLDER + nombre_archivo_final
                 with open(tmp.name, 'rb') as f:
                     dbx.files_upload(f.read(), ruta_destino, mode=dropbox.files.WriteMode.overwrite)
-                # Manejar shared_link existente
                 try:
                     shared_link_metadata = dbx.sharing_create_shared_link_with_settings(ruta_destino)
                     url = shared_link_metadata.url
@@ -127,12 +122,11 @@ with pestañas[4]:
                 if url:
                     st.success(f"Archivo semanal generado y subido. Acceso: {url}")
             # Mostrar tablas lado a lado en Streamlit
-            cols = st.columns(6)
-            for idx, dia in enumerate(["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]):
-                if dia in tablas_por_dia:
-                    df_dia = pd.concat(tablas_por_dia[dia], ignore_index=True)
-                    cols[idx].markdown(f"**{dia}**")
-                    cols[idx].dataframe(df_dia)
+            cols = st.columns(len(fechas_ordenadas))
+            for idx, fecha in enumerate(fechas_ordenadas):
+                df_fecha = pd.concat(tablas_por_fecha[fecha], ignore_index=True)
+                cols[idx].markdown(f"**{fecha}**")
+                cols[idx].dataframe(df_fecha)
 
     fecha_control = st.date_input("Fecha del control", value=date.today(), key="fecha_control_ufpso", help="Fecha")
 
