@@ -58,13 +58,10 @@ with pestañas[4]:
     fecha_fin = col2.date_input("Fecha de fin de la semana", value=date.today(), key="fecha_fin_semana")
 
     if st.button("Unir reportes diarios de la semana y subir a Dropbox", key="btn_unir_reportes_semanal"):
-        # Conexión a Dropbox
         from utils.dropbox import get_access_token, DROPBOX_FOLDER
         access_token = get_access_token()
         dbx = dropbox.Dropbox(oauth2_access_token=access_token)
-        # Listar archivos en la carpeta
         archivos = dbx.files_list_folder(DROPBOX_FOLDER).entries
-        # Filtrar archivos de la semana
         patron = re.compile(r"Control_Limpieza_Restaurante_UFPSO_(\d{4}-\d{2}-\d{2})\.xlsx", re.IGNORECASE)
         archivos_semana = []
         for entry in archivos:
@@ -77,8 +74,9 @@ with pestañas[4]:
         if not archivos_semana:
             st.warning("No se encontraron reportes diarios para ese rango de fechas.")
         else:
-            # Descargar y unir los archivos
-            dfs = []
+            # Agrupar por día de la semana
+            dias_map = {0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves", 4: "Viernes", 5: "Sábado", 6: "Domingo"}
+            tablas_por_dia = {}
             for nombre_archivo, fecha_archivo in sorted(archivos_semana, key=lambda x: x[1]):
                 ruta = DROPBOX_FOLDER + nombre_archivo
                 _, res = dbx.files_download(ruta)
@@ -86,11 +84,7 @@ with pestañas[4]:
                     wb = openpyxl.load_workbook(f)
                     ws = wb.active
                     data = list(ws.values)
-                    # Buscar la primera fila de datos (después de encabezados)
-                    # Saltar filas vacías y encabezados
                     data = [row for row in data if any(row)]
-                    # Quitar filas de fecha y responsable, dejar solo la tabla principal
-                    # Buscar la fila que contiene los encabezados de la tabla
                     idx = 0
                     for i, row in enumerate(data):
                         if row and "Área" in row:
@@ -98,22 +92,47 @@ with pestañas[4]:
                             break
                     tabla = data[idx:]
                     df = pd.DataFrame(tabla[1:], columns=tabla[0])
-                    df.insert(0, "Fecha", fecha_archivo)
-                    dfs.append(df)
-            if dfs:
-                df_semanal = pd.concat(dfs, ignore_index=True)
-                # Guardar archivo temporal
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx", prefix="Control_Limpieza_Restaurante_UFPSO_Semanal_") as tmp:
-                    df_semanal.to_excel(tmp.name, index=False)
-                    nombre_archivo_final = f"Control_Limpieza_Restaurante_UFPSO_Semanal_{fecha_inicio}_a_{fecha_fin}.xlsx"
-                    ruta_destino = DROPBOX_FOLDER + nombre_archivo_final
-                    with open(tmp.name, 'rb') as f:
-                        dbx.files_upload(f.read(), ruta_destino, mode=dropbox.files.WriteMode.overwrite)
+                    # Detectar el día de la semana
+                    dia_dt = date.fromisoformat(fecha_archivo)
+                    dia_semana = dias_map[dia_dt.weekday()]
+                    if dia_semana not in tablas_por_dia:
+                        tablas_por_dia[dia_semana] = []
+                    tablas_por_dia[dia_semana].append(df)
+            # Unir por día y guardar en Excel lado a lado
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx", prefix="Control_Limpieza_Restaurante_UFPSO_Semanal_") as tmp:
+                with pd.ExcelWriter(tmp.name, engine="openpyxl") as writer:
+                    col_offset = 0
+                    for dia in ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]:
+                        if dia in tablas_por_dia:
+                            df_dia = pd.concat(tablas_por_dia[dia], ignore_index=True)
+                            df_dia.to_excel(writer, sheet_name="Semana", startrow=0, startcol=col_offset, index=False)
+                            # Escribir el nombre del día arriba de la tabla
+                            ws = writer.sheets["Semana"]
+                            ws.cell(row=1, column=col_offset+1, value=dia)
+                            col_offset += len(df_dia.columns) + 2  # Separación entre tablas
+                nombre_archivo_final = f"Control_Limpieza_Restaurante_UFPSO_Semanal_{fecha_inicio}_a_{fecha_fin}.xlsx"
+                ruta_destino = DROPBOX_FOLDER + nombre_archivo_final
+                with open(tmp.name, 'rb') as f:
+                    dbx.files_upload(f.read(), ruta_destino, mode=dropbox.files.WriteMode.overwrite)
+                # Manejar shared_link existente
+                try:
                     shared_link_metadata = dbx.sharing_create_shared_link_with_settings(ruta_destino)
-                    st.success(f"Archivo semanal generado y subido. Acceso: {shared_link_metadata.url}")
-                st.dataframe(df_semanal)
-            else:
-                st.warning("No se pudieron unir los reportes. Verifique que existan datos válidos.")
+                    url = shared_link_metadata.url
+                except dropbox.exceptions.ApiError as e:
+                    if (hasattr(e, 'error') and hasattr(e.error, 'is_shared_link_already_exists') and e.error.is_shared_link_already_exists()):
+                        links = dbx.sharing_list_shared_links(path=ruta_destino, direct_only=True).links
+                        url = links[0].url if links else None
+                    else:
+                        raise
+                if url:
+                    st.success(f"Archivo semanal generado y subido. Acceso: {url}")
+            # Mostrar tablas lado a lado en Streamlit
+            cols = st.columns(6)
+            for idx, dia in enumerate(["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]):
+                if dia in tablas_por_dia:
+                    df_dia = pd.concat(tablas_por_dia[dia], ignore_index=True)
+                    cols[idx].markdown(f"**{dia}**")
+                    cols[idx].dataframe(df_dia)
 
     fecha_control = st.date_input("Fecha del control", value=date.today(), key="fecha_control_ufpso", help="Fecha")
 
