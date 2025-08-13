@@ -45,63 +45,60 @@ with pestañas[4]:
     st.header("Control de limpieza y desinfección Restaurante UFPSO")
     fecha_control = st.date_input("Fecha del control", value=date.today(), key="fecha_control_ufpso", help="Fecha")
 
-    categorias = [
-        ("Baños", "banos"),
-        ("Almacen Fruver", "fruver"),
-        ("Almacen Abarrotes", "abarrotes"),
-        ("Cavas de almacenamientos/nevera", "cavas"),
-        ("Cocina caliente", "caliente"),
-        ("Panaderia/pasteleria", "panaderia"),
-        ("Linea de servicio", "linea"),
-        ("Comedor", "comedor"),
-        ("Acopio de residuos", "acopio")
-    ]
+    # Áreas fijas por categoría
+    categorias_areas = {
+        "Baños": ["Paredes", "Pisos", "Lavamanos", "Inodoros"],
+        "Almacen Fruver": ["Paredes", "Puertas", "Piso", "Estibas"],
+        "Almacen Abarrotes": ["Paredes", "Pisos", "Puerta", "Estibas", "Estantes"],
+        "Cavas de almacenamiento/nevera": ["Paredes interiores", "Pisos", "Puertas", "Exteriores"],
+        "Cocina caliente": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
+        "Panadería Y Pastelería": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
+        "Línea de servicio": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
+        "Comedor": ["Iluminarias", "Paredes", "Pisos", "Puertas", "Mesones","Ventanas"],
+        "Acopio de residuos": ["Orgánicos", "Inorgánicos", "Puertas", "Canecas","Tapas","Trampas de grasa"]
+    }
+    # Selector único de día para todo el reporte (desplegable)
+    dias_opciones = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    dia_seleccionado = st.selectbox("Selecciona el día del reporte", dias_opciones, index=0)
+    columnas_base = ["Área", dia_seleccionado, "Observaciones"]
     dfs_categorias = {}
-    for nombre, key in categorias:
+    for nombre, key in [(k, k.lower().replace(' ', '_')) for k in categorias_areas.keys()]:
         st.subheader(nombre)
-        columnas = [
-            "Área", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Observaciones"
-        ]
-        num_filas = st.number_input(f"Cantidad de filas para {nombre}", min_value=1, max_value=20, value=4, key=f"num_filas_{key}")
-        cols_header = st.columns(len(columnas))
-        for idx, col in enumerate(columnas):
-            cols_header[idx].markdown(f"**{col}**")
+        areas = categorias_areas[nombre]
         data = []
-        for i in range(num_filas):
-            cols = st.columns(len(columnas))
-            area_val = cols[0].text_input("Área", key=f"{key}_area_{i}", label_visibility="collapsed", placeholder="Ej: Área")
-            fila = [area_val]
-            for j in range(1, 7):
-                val = cols[j].selectbox(
-                    columnas[j],
-                    [f"Seleccione {columnas[j]}", "R", "NR"],
-                    key=f"{key}_{i}_{j}",
-                    label_visibility="collapsed",
-                    index=0,
-                    help=f"Seleccione R o NR para {columnas[j]}"
-                )
-                val = val if val in ["R", "NR"] else ""
-                fila.append(val)
-            observ = cols[7].text_input("Observaciones", key=f"{key}_obs_{i}", label_visibility="collapsed", placeholder="Observaciones")
-            fila.append(observ)
-            data.append(fila)
-        df = pd.DataFrame(data, columns=columnas)
+        for i, area in enumerate(areas):
+            cols = st.columns([2, 1, 2])
+            # Área como texto fijo
+            cols[0].markdown(f"<div style='padding-top:0.5em'>{area}</div>", unsafe_allow_html=True)
+            # Selector R/NR para el día seleccionado (desplegable)
+            val = cols[1].selectbox(
+                dia_seleccionado,
+                ["Seleccione si se realizó", "R", "NR"],
+                key=f"{key}_{i}_dia",
+                label_visibility="collapsed",
+                index=0,
+                help=f"Seleccione R o NR para {dia_seleccionado}"
+            )
+            val = val if val in ["R", "NR"] else ""
+            observ = cols[2].text_input("Observaciones", key=f"{key}_obs_{i}", label_visibility="collapsed", placeholder="Observaciones")
+            data.append([area, val, observ])
+        df = pd.DataFrame(data, columns=columnas_base)
         dfs_categorias[nombre] = df
 
     responsable_general = st.text_input("Responsable general del reporte", key="responsable_general_restaurante")
     if st.button("Generar y subir reporte de limpieza Restaurante a Dropbox", key="btn_reporte_restaurante"):
         # Construir una super tabla con títulos de categoría como filas separadoras
         super_tabla = []
-        for nombre, key in categorias:
+        for nombre in categorias_areas.keys():
             # Fila de título de categoría
-            super_tabla.append([f"{nombre}"] + ["" for _ in range(7)])
+            super_tabla.append([f"{nombre}"] + ["" for _ in range(2)])
             # Encabezados de la tabla
             super_tabla.append(list(dfs_categorias[nombre].columns))
             # Filas de la tabla
             for fila in dfs_categorias[nombre].values:
                 super_tabla.append(list(fila))
             # Fila vacía para separar categorías
-            super_tabla.append(["" for _ in range(8)])
+            super_tabla.append(["" for _ in range(3)])
         df_super = pd.DataFrame(super_tabla)
         archivo = generar_excel(
             "CONTROL DE LIMPIEZA Y DESINFECCION RESTAURANTE UFPSO",
@@ -115,17 +112,6 @@ with pestañas[4]:
         url = subir_a_dropbox(archivo)
         st.success(f"Reporte generado y subido. Acceso: {url}")
 
-    categorias = [
-        ("Baños", "banos"),
-        ("Almacen Fruver", "fruver"),
-        ("Almacen Abarrotes", "abarrotes"),
-        ("Cavas de almacenamientos/nevera", "cavas"),
-        ("Cocina caliente", "caliente"),
-        ("Panaderia/pasteleria", "panaderia"),
-        ("Linea de servicio", "linea"),
-        ("Comedor", "comedor"),
-        ("Acopio de residuos", "acopio")
-    ]
     # (render_categoria eliminado, ya no se llama aquí)
 with pestañas[3]:
     st.header("Registro y control de limpieza y desinfección de tanques de almacenamiento de agua")
