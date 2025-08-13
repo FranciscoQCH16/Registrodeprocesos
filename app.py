@@ -43,6 +43,78 @@ tabs_labels = [
 pestañas = st.tabs(tabs_labels)
 with pestañas[4]:
     st.header("Control de limpieza y desinfección Restaurante UFPSO")
+
+    st.subheader(":blue[Unir reportes diarios en un solo archivo semanal]")
+    from datetime import timedelta
+    import tempfile
+    import re
+    import openpyxl
+    import io
+    import dropbox
+
+    # Selección de rango de fechas (semana)
+    col1, col2 = st.columns(2)
+    fecha_inicio = col1.date_input("Fecha de inicio de la semana", value=date.today() - timedelta(days=date.today().weekday()), key="fecha_inicio_semana")
+    fecha_fin = col2.date_input("Fecha de fin de la semana", value=date.today(), key="fecha_fin_semana")
+
+    if st.button("Unir reportes diarios de la semana y subir a Dropbox", key="btn_unir_reportes_semanal"):
+        # Conexión a Dropbox
+        from utils.dropbox import get_access_token, DROPBOX_FOLDER
+        access_token = get_access_token()
+        dbx = dropbox.Dropbox(oauth2_access_token=access_token)
+        # Listar archivos en la carpeta
+        archivos = dbx.files_list_folder(DROPBOX_FOLDER).entries
+        # Filtrar archivos de la semana
+        patron = re.compile(r"Control_Limpieza_Restaurante_UFPSO_(\d{4}-\d{2}-\d{2})\.xlsx", re.IGNORECASE)
+        archivos_semana = []
+        for entry in archivos:
+            if hasattr(entry, 'name'):
+                m = patron.search(entry.name)
+                if m:
+                    fecha_archivo = m.group(1)
+                    if fecha_inicio <= date.fromisoformat(fecha_archivo) <= fecha_fin:
+                        archivos_semana.append((entry.name, fecha_archivo))
+        if not archivos_semana:
+            st.warning("No se encontraron reportes diarios para ese rango de fechas.")
+        else:
+            # Descargar y unir los archivos
+            dfs = []
+            for nombre_archivo, fecha_archivo in sorted(archivos_semana, key=lambda x: x[1]):
+                ruta = DROPBOX_FOLDER + nombre_archivo
+                _, res = dbx.files_download(ruta)
+                with io.BytesIO(res.content) as f:
+                    wb = openpyxl.load_workbook(f)
+                    ws = wb.active
+                    data = list(ws.values)
+                    # Buscar la primera fila de datos (después de encabezados)
+                    # Saltar filas vacías y encabezados
+                    data = [row for row in data if any(row)]
+                    # Quitar filas de fecha y responsable, dejar solo la tabla principal
+                    # Buscar la fila que contiene los encabezados de la tabla
+                    idx = 0
+                    for i, row in enumerate(data):
+                        if row and "Área" in row:
+                            idx = i
+                            break
+                    tabla = data[idx:]
+                    df = pd.DataFrame(tabla[1:], columns=tabla[0])
+                    df.insert(0, "Fecha", fecha_archivo)
+                    dfs.append(df)
+            if dfs:
+                df_semanal = pd.concat(dfs, ignore_index=True)
+                # Guardar archivo temporal
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx", prefix="Control_Limpieza_Restaurante_UFPSO_Semanal_") as tmp:
+                    df_semanal.to_excel(tmp.name, index=False)
+                    nombre_archivo_final = f"Control_Limpieza_Restaurante_UFPSO_Semanal_{fecha_inicio}_a_{fecha_fin}.xlsx"
+                    ruta_destino = DROPBOX_FOLDER + nombre_archivo_final
+                    with open(tmp.name, 'rb') as f:
+                        dbx.files_upload(f.read(), ruta_destino, mode=dropbox.files.WriteMode.overwrite)
+                    shared_link_metadata = dbx.sharing_create_shared_link_with_settings(ruta_destino)
+                    st.success(f"Archivo semanal generado y subido. Acceso: {shared_link_metadata.url}")
+                st.dataframe(df_semanal)
+            else:
+                st.warning("No se pudieron unir los reportes. Verifique que existan datos válidos.")
+
     fecha_control = st.date_input("Fecha del control", value=date.today(), key="fecha_control_ufpso", help="Fecha")
 
     # Áreas fijas por categoría
