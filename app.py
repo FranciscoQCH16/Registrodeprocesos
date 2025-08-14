@@ -28,7 +28,7 @@ if not st.session_state["autenticado"]:
     login()
     st.stop()
 
-st.set_page_config(page_title="Reportes B.P.M.", layout="wide")
+st.set_page_config(page_title="Reportes L & D", layout="wide")
 
 st.title("Sistema de Reportes L & D")
 
