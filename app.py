@@ -52,6 +52,20 @@ with pestañas[4]:
     import io
     import dropbox
 
+
+    # Áreas fijas por categoría (mover aquí para que esté disponible en todo el scope)
+    categorias_areas = {
+        "Baños": ["Paredes", "Pisos", "Lavamanos", "Inodoros"],
+        "Almacen Fruver": ["Paredes", "Puertas", "Piso", "Estibas"],
+        "Almacen Abarrotes": ["Paredes", "Pisos", "Puerta", "Estibas", "Estantes"],
+        "Cavas de almacenamiento/nevera": ["Paredes interiores", "Pisos", "Puertas", "Exteriores"],
+        "Cocina caliente": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
+        "Panadería Y Pastelería": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
+        "Línea de servicio": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
+        "Comedor": ["Iluminarias", "Paredes", "Pisos", "Puertas", "Mesones","Ventanas"],
+        "Acopio de residuos": ["Orgánicos", "Inorgánicos", "Puertas", "Canecas","Tapas","Trampas de grasa"]
+    }
+
     # Selección de rango de fechas (semana)
     col1, col2 = st.columns(2)
     fecha_inicio = col1.date_input("Fecha de inicio de la semana", value=date.today() - timedelta(days=date.today().weekday()), key="fecha_inicio_semana")
@@ -85,13 +99,37 @@ with pestañas[4]:
                     ws = wb.active
                     data = list(ws.values)
                     data = [row for row in data if any(row)]
-                    idx = 0
-                    for i, row in enumerate(data):
-                        if row and "Área" in row:
-                            idx = i
-                            break
-                    tabla = data[idx:]
-                    df = pd.DataFrame(tabla[1:], columns=tabla[0])
+                    bloques = []
+                    i = 0
+                    while i < len(data):
+                        # Buscar fila de título de categoría
+                        if data[i] and all(isinstance(x, str) and x.strip() != '' for x in data[i][0:1]) and data[i][0] in [*categorias_areas.keys()]:
+                            categoria = data[i][0]
+                            # Encabezados
+                            if i+1 < len(data) and "Área" in data[i+1]:
+                                headers = data[i+1]
+                                # Filas de datos
+                                j = i+2
+                                filas = []
+                                while j < len(data) and (data[j][0] not in categorias_areas.keys() and any(data[j])):
+                                    filas.append(data[j])
+                                    j += 1
+                                # Guardar bloque: primero la fila de título, luego encabezados, luego datos
+                                bloques.append([list(data[i])] + [list(headers)] + [list(f) for f in filas])
+                                i = j
+                            else:
+                                i += 1
+                        else:
+                            i += 1
+                    # Unir todos los bloques en una sola lista de filas
+                    filas_final = []
+                    for bloque in bloques:
+                        filas_final.extend(bloque)
+                        filas_final.append(["" for _ in range(3)])  # Separador
+                    # Convertir a DataFrame (rellenar filas cortas)
+                    max_cols = max(len(f) for f in filas_final) if filas_final else 3
+                    filas_final = [f + [""]*(max_cols-len(f)) for f in filas_final]
+                    df = pd.DataFrame(filas_final)
                     if fecha_archivo not in tablas_por_fecha:
                         tablas_por_fecha[fecha_archivo] = []
                         fechas_ordenadas.append(fecha_archivo)
