@@ -357,28 +357,34 @@ with pestañas[0]:
     for i, nombre_operario in enumerate(operarios):
         cols = st.columns(len(columnas))
         fila = []
-        for j, col in enumerate(columnas):
-            if j == 0:
-                # Nombre del operario fijo
-                cols[j].markdown(f"<div style='padding-top:0.5em'>{nombre_operario}</div>", unsafe_allow_html=True)
-                fila.append(nombre_operario)
-            elif 1 <= j <= 5:
-                val = cols[j].selectbox(
-                    col,
-                    opciones_selector(col),
-                    key=f"sel_{i}_{j}",
-                    label_visibility="collapsed",
-                    index=0,
-                    help=f"Seleccione C o NC para {col}"
-                )
-                val = val if val in ["C", "NC"] else ""
-                fila.append(val)
-            else:
-                val = cols[j].text_input(
-                    col, key=f"txt_{i}_{j}", label_visibility="collapsed", placeholder=col
-                )
-                fila.append(val)
+        # Mostrar el nombre del operario como celda fija
+        cols[0].markdown(f"<div style='padding-top:0.5em'>{nombre_operario}</div>", unsafe_allow_html=True)
+        fila.append(nombre_operario)
+        seleccionados = []
+        # Campos selectbox
+        for j, col in enumerate(columnas[1:6], start=1):
+            val = cols[j].selectbox(
+                col,
+                opciones_selector(col),
+                key=f"sel_{i}_{j}",
+                label_visibility="collapsed",
+                index=0,
+                help=f"Seleccione C o NC para {col}"
+            )
+            val = val if val in ["C", "NC"] else ""
+            fila.append(val)
+            seleccionados.append(val)
+        # Observaciones solo si algún campo está en "NC"
+        if "NC" in seleccionados:
+            observ = cols[6].text_input(
+                "Observaciones", key=f"txt_{i}_obs", label_visibility="collapsed", placeholder="Observaciones"
+            )
+        else:
+            observ = ""
+        fila.append(observ)
         data.append(fila)
+        # Línea de separación visual entre filas
+        st.markdown("<hr style='margin: 0.5em 0;'>", unsafe_allow_html=True)
     df = pd.DataFrame(data, columns=columnas)
 
     st.subheader("Firmas")
