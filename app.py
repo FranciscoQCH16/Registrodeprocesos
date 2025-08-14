@@ -341,23 +341,28 @@ with pestañas[0]:
 
     st.subheader("Datos de Operarios")
     columnas = [
-        "Nombre del operario", "Cargo", "Lavado de manos", "Dotación", "Utilizan toda la dotación",
+        "Nombre del operario", "Lavado de manos", "Dotación", "Utilizan toda la dotación",
         "Uñas cortas limpias y sin esmalte", "Accesorios y presentación personal", "Observaciones"
     ]
     # Para los selectores, la primera opción es un hint con el nombre de la columna
     opciones_selector = lambda col: [f"Seleccione {col}", "C", "NC"]
     data = []
-    filas = st.number_input("Cantidad de operarios", min_value=1, max_value=20, value=3)
+    operarios = ["Juan Carlos", "Humberto Florez", "Francisco Quintero"]
+    filas = len(operarios)
     # Mostrar títulos de columna
     cols_titulos = st.columns(len(columnas))
     for j, col in enumerate(columnas):
         cols_titulos[j].markdown(f"**{col}**")
     # Inputs de la tabla
-    for i in range(filas):
+    for i, nombre_operario in enumerate(operarios):
         cols = st.columns(len(columnas))
         fila = []
         for j, col in enumerate(columnas):
-            if 2 <= j <= 6:
+            if j == 0:
+                # Nombre del operario fijo
+                cols[j].markdown(f"<div style='padding-top:0.5em'>{nombre_operario}</div>", unsafe_allow_html=True)
+                fila.append(nombre_operario)
+            elif 1 <= j <= 5:
                 val = cols[j].selectbox(
                     col,
                     opciones_selector(col),
@@ -366,13 +371,13 @@ with pestañas[0]:
                     index=0,
                     help=f"Seleccione C o NC para {col}"
                 )
-                # Si el usuario no selecciona una opción válida, dejar el valor vacío
                 val = val if val in ["C", "NC"] else ""
+                fila.append(val)
             else:
                 val = cols[j].text_input(
                     col, key=f"txt_{i}_{j}", label_visibility="collapsed", placeholder=col
                 )
-            fila.append(val)
+                fila.append(val)
         data.append(fila)
     df = pd.DataFrame(data, columns=columnas)
 
