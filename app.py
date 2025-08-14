@@ -30,7 +30,7 @@ if not st.session_state["autenticado"]:
 
 st.set_page_config(page_title="Reportes B.P.M.", layout="wide")
 
-st.title("Sistema de Reportes")
+st.title("Sistema de Reportes L & D")
 
 # Pestañas para distintos reportes
 tabs_labels = [
