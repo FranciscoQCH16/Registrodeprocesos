@@ -135,6 +135,7 @@ with pestañas[4]:
                         fechas_ordenadas.append(fecha_archivo)
                     tablas_por_fecha[fecha_archivo].append(df)
             # Unir por fecha y guardar en Excel lado a lado
+            from openpyxl.styles import Font
             with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx", prefix="Control_Limpieza_Restaurante_UFPSO_Semanal_") as tmp:
                 with pd.ExcelWriter(tmp.name, engine="openpyxl") as writer:
                     col_offset = 0
@@ -143,6 +144,17 @@ with pestañas[4]:
                         df_fecha.to_excel(writer, sheet_name="Semana", startrow=0, startcol=col_offset, index=False)
                         ws = writer.sheets["Semana"]
                         ws.cell(row=1, column=col_offset+1, value=fecha)
+                        # Ajustar ancho de columnas automáticamente
+                        for i, col in enumerate(df_fecha.columns, start=col_offset+1):
+                            max_length = max([len(str(cell)) if cell is not None else 0 for cell in df_fecha[col]])
+                            header = str(col)
+                            max_length = max(max_length, len(header))
+                            ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = max_length + 2
+                        # Poner en negrita los títulos de categoría y encabezados
+                        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=col_offset+1, max_col=col_offset+len(df_fecha.columns)):
+                            if row[0].value in categorias_areas.keys() or row[0].value == "Área":
+                                for cell in row:
+                                    cell.font = Font(bold=True)
                         col_offset += len(df_fecha.columns) + 2
                 nombre_archivo_final = f"Control_Limpieza_Restaurante_UFPSO_Semanal_{fecha_inicio}_a_{fecha_fin}.xlsx"
                 ruta_destino = DROPBOX_FOLDER + nombre_archivo_final
