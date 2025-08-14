@@ -215,7 +215,11 @@ with pestañas[4]:
                 help=f"Seleccione R o NR para {dia_seleccionado}"
             )
             val = val if val in ["R", "NR"] else ""
-            observ = cols[2].text_input("Observaciones", key=f"{key}_obs_{i}", label_visibility="collapsed", placeholder="Observaciones")
+            # Observaciones solo si NR
+            if val == "NR":
+                observ = cols[2].text_input("Observaciones", key=f"{key}_obs_{i}", label_visibility="collapsed", placeholder="Observaciones")
+            else:
+                observ = ""
             data.append([area, val, observ])
         df = pd.DataFrame(data, columns=columnas_base)
         dfs_categorias[nombre] = df
