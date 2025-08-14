@@ -7,7 +7,7 @@ import os
 DROPBOX_APP_KEY = st.secrets["dropbox"]["app_key"]
 DROPBOX_APP_SECRET = st.secrets["dropbox"]["app_secret"]
 DROPBOX_REFRESH_TOKEN = st.secrets["dropbox"]["refresh_token"]
-DROPBOX_FOLDER = '/ReportesBPM/'
+DROPBOX_FOLDER = '/ReportesL&D/'
 
 # 1. Obtener refresh token (solo la primera vez, localmente)
 def obtener_refresh_token():
