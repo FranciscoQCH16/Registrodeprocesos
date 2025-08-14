@@ -336,7 +336,7 @@ with pestañas[2]:
 
 with pestañas[0]:
     st.header("Verificación de B.P.M.")
-    nombre_establecimiento = st.text_input("Nombre del establecimiento")
+    nombre_establecimiento = st.selectbox("Nombre del establecimiento", ["Restaurante Universitario"])
     fecha = st.date_input("Fecha", value=date.today())
 
     st.subheader("Datos de Operarios")
