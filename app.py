@@ -351,7 +351,10 @@ with pestañas[0]:
     # Para los selectores, la primera opción es un hint con el nombre de la columna
     opciones_selector = lambda col: [f"Seleccione {col}", "C", "NC"]
     data = []
-    operarios = ["Juan Carlos", "Humberto Florez", "Francisco Quintero"]
+    operarios = ["Rafael Enrique Caceres", "Heidy Torcoroma Becerra", "Luis Fernando Sanchez", "Monica Bayona Sanchez",
+                 "Maritza Uribe Barbosa", "Ana Karina Quintero", "Liliana Duran Perez", "Maria Eugenia Sanchez", "Yesica Fernanda Sanchez",
+                 "Fabiola Peñuela Sanchez", "Rosa Karina Lanziano", "Lauren Daniela Conde", "Diomira Perez Becerra", "Alvaro Sanchez",
+                 "Marielsy Bermudez", "Yulieth Marcela Guerrero", "Lupi Badillo Duran"]
     filas = len(operarios)
     # Mostrar títulos de columna
     cols_titulos = st.columns(len(columnas))
