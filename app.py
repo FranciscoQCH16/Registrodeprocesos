@@ -63,7 +63,7 @@ with pestañas[4]:
         "Panadería Y Pastelería": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
         "Línea de servicio": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
         "Comedor": ["Iluminarias", "Paredes", "Pisos", "Puertas", "Mesones","Ventanas"],
-        "Acopio de residuos": ["Orgánicos", "Inorgánicos", "Puertas", "Canecas","Tapas","Trampas de grasa"]
+        "Acopio de residuos": ["Orgánicos", "Inorgánicos", "Puertas", "Canecas","Tapas"]
     }
 
     # Selección de rango de fechas (semana)
@@ -190,7 +190,7 @@ with pestañas[4]:
         "Panadería Y Pastelería": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
         "Línea de servicio": ["Maquinaria y equipos", "Paredes", "Pisos", "Puertas", "Mesones"],
         "Comedor": ["Iluminarias", "Paredes", "Pisos", "Puertas", "Mesones","Ventanas"],
-        "Acopio de residuos": ["Orgánicos", "Inorgánicos", "Puertas", "Canecas","Tapas","Trampas de grasa"]
+        "Acopio de residuos": ["Orgánicos", "Inorgánicos", "Puertas", "Canecas","Tapas"]
     }
     # Selector único de día para todo el reporte (desplegable)
     dias_opciones = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
@@ -208,15 +208,15 @@ with pestañas[4]:
             # Selector R/NR para el día seleccionado (desplegable)
             val = cols[1].selectbox(
                 dia_seleccionado,
-                ["Seleccione si se realizó", "R", "NR"],
+                ["Seleccione si se realizó", "Cumple", "No Cumple"],
                 key=f"{key}_{i}_dia",
                 label_visibility="collapsed",
                 index=0,
-                help=f"Seleccione R o NR para {dia_seleccionado}"
+                help=f"Seleccione Cumple o No Cumple para {dia_seleccionado}"
             )
-            val = val if val in ["R", "NR"] else ""
-            # Observaciones solo si NR
-            if val == "NR":
+            val = val if val in ["Cumple", "No Cumple"] else ""
+            # Observaciones solo si No Cumple
+            if val == "No Cumple":
                 observ = cols[2].text_input("Observaciones", key=f"{key}_obs_{i}", label_visibility="collapsed", placeholder="Observaciones")
             else:
                 observ = ""
